@@ -1,0 +1,7 @@
+{
+  "name": "VetCare Pro (I-Vet)",
+  "description": "A scalable Veterinary Management SaaS (Consultório to Hospital) featuring electronic medical records, scheduling, and AI-assisted diagnostics powered by Gemini.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
