@@ -1,5 +1,6 @@
 import React from 'react';
-import { LayoutDashboard, Users, Calendar, BrainCircuit, Settings, Stethoscope, ShoppingBag } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, BrainCircuit, Settings, Stethoscope, ShoppingBag, LogOut } from 'lucide-react';
+import { authService } from '../services/authService';
 
 interface SidebarProps {
   currentView: string;
@@ -8,6 +9,8 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen }) => {
+  const user = authService.getCurrentUser();
+  
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { id: 'patients', label: 'Pacientes', icon: <Users size={20} /> },
@@ -46,15 +49,27 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen }) => {
               </button>
             </li>
           ))}
+          
+          <li className="mt-8 mb-2 px-4 border-t border-teal-800 pt-4">
+             <button
+                onClick={() => setView('logout')}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-teal-100 hover:bg-red-800 hover:text-white"
+              >
+                <LogOut size={20} />
+                <span className="font-medium">Sair</span>
+              </button>
+          </li>
         </ul>
       </nav>
 
       <div className="p-4 border-t border-teal-800 bg-teal-950">
         <div className="flex items-center gap-3">
-          <img src="https://picsum.photos/40/40" alt="Dr. User" className="w-10 h-10 rounded-full border-2 border-teal-500" />
-          <div>
-            <p className="text-sm font-semibold">Dr. João Silva</p>
-            <p className="text-xs text-teal-400">CRMV-SP 12345</p>
+          <div className="w-10 h-10 rounded-full border-2 border-teal-500 bg-teal-800 flex items-center justify-center font-bold text-white">
+             {user?.name.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div className="overflow-hidden">
+            <p className="text-sm font-semibold truncate">{user?.name || 'Usuário'}</p>
+            <p className="text-xs text-teal-400 capitalize">{user?.role || 'Visitante'}</p>
           </div>
         </div>
       </div>

@@ -5,6 +5,14 @@ export enum Species {
   OTHER = 'Outro'
 }
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'vet' | 'admin' | 'tutor';
+  phone?: string;
+}
+
 export interface Owner {
   id: string;
   name: string;

@@ -1,16 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import PatientList from './components/PatientList';
 import AIAssistant from './components/AIAssistant';
 import Marketplace from './components/Marketplace';
 import Schedule from './components/Schedule';
+import Login from './components/Auth/Login';
+import Register from './components/Auth/Register';
+import { authService } from './services/authService';
 import { Menu, X } from 'lucide-react';
 
 // Main Application Layout
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    if (user) {
+      setIsAuthenticated(true);
+    }
+    setIsLoading(false);
+  }, []);
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    setAuthMode('login');
+  };
 
   const renderView = () => {
     switch (currentView) {
@@ -34,6 +58,36 @@ const App: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold text-teal-800 mb-2">VetCare Pro</h1>
+          <p className="text-gray-500">Gestão Veterinária Inteligente</p>
+        </div>
+        
+        {authMode === 'login' ? (
+          <Login 
+            onLoginSuccess={handleLoginSuccess} 
+            onSwitchToRegister={() => setAuthMode('register')} 
+          />
+        ) : (
+          <Register 
+            onSwitchToLogin={() => setAuthMode('login')} 
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans">
       {/* Mobile Sidebar Overlay */}
@@ -48,8 +102,12 @@ const App: React.FC = () => {
       <Sidebar 
         currentView={currentView} 
         setView={(view) => {
-          setCurrentView(view);
-          setIsSidebarOpen(false);
+          if (view === 'logout') {
+            handleLogout();
+          } else {
+            setCurrentView(view);
+            setIsSidebarOpen(false);
+          }
         }}
         isOpen={isSidebarOpen}
       />

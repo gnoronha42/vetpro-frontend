@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { MOCK_PRODUCTS } from '../constants';
+import React, { useState, useEffect } from 'react';
 import { Product, CartItem, Order } from '../types';
-import { Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, CheckCircle, Package, Truck, Filter } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, CheckCircle, Package, Truck, Filter, AlertCircle } from 'lucide-react';
+import { productService } from '../services/productService';
 
 const Marketplace: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'catalog' | 'orders'>('catalog');
@@ -12,9 +12,32 @@ const Marketplace: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'payment' | 'success'>('cart');
   const [processing, setProcessing] = useState(false);
+  
+  // New States for API
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await productService.getAll();
+      setProducts(data);
+    } catch (err) {
+      console.error('Erro ao buscar produtos:', err);
+      setError('Não foi possível carregar os produtos. Verifique sua conexão.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter Logic
-  const filteredProducts = MOCK_PRODUCTS.filter(product => {
+  const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'Todos' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
@@ -45,7 +68,7 @@ const Marketplace: React.FC = () => {
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const cartTotal = cart.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   // Checkout Logic
@@ -133,34 +156,59 @@ const Marketplace: React.FC = () => {
 
           {/* Product Grid */}
           <div className="flex-1 overflow-y-auto pr-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProducts.map(product => (
-                <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                  <div className="h-48 overflow-hidden bg-gray-50 flex items-center justify-center relative group">
-                    <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-600">
-                      Estoque: {product.stock}
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <AlertCircle className="text-red-500 mb-2" size={48} />
+                <p className="text-gray-600 mb-4">{error}</p>
+                <button 
+                  onClick={fetchProducts}
+                  className="text-teal-600 hover:underline font-medium"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-20 text-gray-400">
+                <p>Nenhum produto encontrado.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map(product => (
+                  <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                    <div className="h-48 overflow-hidden bg-gray-50 flex items-center justify-center relative group">
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      ) : (
+                        <div className="text-gray-300">Sem imagem</div>
+                      )}
+                      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-600">
+                        Estoque: {product.stock}
+                      </div>
+                    </div>
+                    <div className="p-4 flex-1 flex flex-col">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-1 rounded uppercase tracking-wide">{product.category}</span>
+                      </div>
+                      <h3 className="font-bold text-gray-900 mb-1">{product.name}</h3>
+                      <p className="text-sm text-gray-500 mb-4 line-clamp-2 flex-1">{product.description}</p>
+                      <div className="flex items-center justify-between mt-auto">
+                        <span className="text-xl font-bold text-gray-900">R$ {Number(product.price).toFixed(2)}</span>
+                        <button 
+                          onClick={() => addToCart(product)}
+                          className="bg-teal-600 text-white p-2 rounded-lg hover:bg-teal-700 transition-colors"
+                        >
+                          <Plus size={20} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-4 flex-1 flex flex-col">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-1 rounded uppercase tracking-wide">{product.category}</span>
-                    </div>
-                    <h3 className="font-bold text-gray-900 mb-1">{product.name}</h3>
-                    <p className="text-sm text-gray-500 mb-4 line-clamp-2 flex-1">{product.description}</p>
-                    <div className="flex items-center justify-between mt-auto">
-                      <span className="text-xl font-bold text-gray-900">R$ {product.price.toFixed(2)}</span>
-                      <button 
-                        onClick={() => addToCart(product)}
-                        className="bg-teal-600 text-white p-2 rounded-lg hover:bg-teal-700 transition-colors"
-                      >
-                        <Plus size={20} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -289,7 +337,7 @@ const Marketplace: React.FC = () => {
                         <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-lg bg-gray-50" />
                         <div className="flex-1">
                           <h4 className="font-medium text-gray-900 text-sm line-clamp-1">{item.name}</h4>
-                          <p className="text-teal-600 font-bold text-sm">R$ {item.price.toFixed(2)}</p>
+                          <p className="text-teal-600 font-bold text-sm">R$ {Number(item.price).toFixed(2)}</p>
                           
                           <div className="flex items-center justify-between mt-2">
                             <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
