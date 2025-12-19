@@ -105,8 +105,8 @@ const App: React.FC = () => {
           if (view === 'logout') {
             handleLogout();
           } else {
-            setCurrentView(view);
-            setIsSidebarOpen(false);
+          setCurrentView(view);
+          setIsSidebarOpen(false);
           }
         }}
         isOpen={isSidebarOpen}

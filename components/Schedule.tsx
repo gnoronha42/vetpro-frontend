@@ -1,47 +1,104 @@
-import React, { useState } from 'react';
-import { MOCK_APPOINTMENTS } from '../constants';
-import { Appointment } from '../types';
-import { Calendar as CalendarIcon, Clock, Plus, CheckCircle, XCircle, AlertCircle, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Appointment, Pet } from '../types';
+import { Calendar as CalendarIcon, Clock, Plus, CheckCircle, XCircle, AlertCircle, User, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { appointmentService, AppointmentCreateData } from '../services/appointmentService';
+import { petService } from '../services/petService';
 
 const Schedule: React.FC = () => {
-  // Defaulting to the mock data date for demo purposes, in production would be new Date()
-  const [date, setDate] = useState<string>('2024-05-20'); 
-  const [appointments, setAppointments] = useState<Appointment[]>(MOCK_APPOINTMENTS);
+  const today = new Date().toISOString().split('T')[0];
+  const [date, setDate] = useState<string>(today);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // New Appointment Form State
-  const [newAppt, setNewAppt] = useState<Partial<Appointment>>({
+  const [newAppt, setNewAppt] = useState<Partial<AppointmentCreateData>>({
     type: 'Consulta',
     status: 'Agendado',
-    time: '09:00'
+    time: '09:00',
+    petId: ''
   });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchAppointments();
+    fetchPets();
+  }, [date]);
+
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      const data = await appointmentService.getAll();
+      setAppointments(data);
+    } catch (error) {
+      console.error('Erro ao buscar agendamentos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPets = async () => {
+    try {
+      const data = await petService.getAll();
+      setPets(data);
+    } catch (error) {
+      console.error('Erro ao buscar pets:', error);
+    }
+  };
 
   const filteredAppointments = appointments
     .filter(a => a.date === date)
     .sort((a, b) => a.time.localeCompare(b.time));
 
-  const handleStatusUpdate = (id: string, status: Appointment['status']) => {
-    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+  const handleStatusUpdate = async (id: string, status: 'Agendado' | 'Concluido' | 'Cancelado') => {
+    try {
+      await appointmentService.update(id, { status });
+      await fetchAppointments();
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      alert('Erro ao atualizar status do agendamento');
+    }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAppt.petName || !newAppt.ownerName || !newAppt.time || !newAppt.type) return;
+    if (!newAppt.petId || !newAppt.time || !newAppt.type) {
+      alert('Preencha todos os campos obrigatórios');
+      return;
+    }
 
-    const appointment: Appointment = {
-      id: Math.random().toString(36).substr(2, 9),
-      petId: 'temp-id',
-      petName: newAppt.petName,
-      ownerName: newAppt.ownerName,
-      date: date,
-      time: newAppt.time,
-      type: newAppt.type as any,
-      status: 'Agendado'
-    };
-
-    setAppointments([...appointments, appointment]);
-    setIsModalOpen(false);
-    setNewAppt({ type: 'Consulta', status: 'Agendado', time: '09:00' });
+    try {
+      setSaving(true);
+      // Combinar data e hora no formato ISO
+      const time = newAppt.time || '09:00';
+      const timeFormatted = time.length === 5 ? time : `${time}:00`; // Garantir HH:MM
+      const dateTime = `${date}T${timeFormatted}`;
+      
+      // Validar data antes de enviar
+      const dateObj = new Date(dateTime);
+      if (isNaN(dateObj.getTime())) {
+        alert('Data ou hora inválida');
+        return;
+      }
+      
+      await appointmentService.create({
+        date: date,
+        time: time,
+        petId: newAppt.petId,
+        type: newAppt.type as any,
+        status: 'Agendado'
+      });
+      
+      await fetchAppointments();
+      setIsModalOpen(false);
+      setNewAppt({ type: 'Consulta', status: 'Agendado', time: '09:00', petId: '' });
+    } catch (error: any) {
+      console.error('Erro ao criar agendamento:', error);
+      alert(error.response?.data?.error || 'Erro ao criar agendamento');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getTypeColor = (type: string) => {
@@ -54,7 +111,7 @@ const Schedule: React.FC = () => {
   };
 
   const changeDate = (days: number) => {
-    const curr = new Date(date + 'T12:00:00'); // Fix timezone issue usually caused by simple string parsing
+    const curr = new Date(date + 'T12:00:00');
     curr.setDate(curr.getDate() + days);
     setDate(curr.toISOString().split('T')[0]);
   };
@@ -96,7 +153,11 @@ const Schedule: React.FC = () => {
 
       {/* Schedule List */}
       <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 p-6 overflow-y-auto">
-        {filteredAppointments.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+          </div>
+        ) : filteredAppointments.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400">
             <Clock size={48} className="mb-4 opacity-20" />
             <p>Nenhum agendamento para esta data.</p>
@@ -167,7 +228,7 @@ const Schedule: React.FC = () => {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
             <div className="p-4 bg-teal-900 text-white flex justify-between items-center">
               <h3 className="font-bold">Novo Agendamento</h3>
-              <button onClick={() => setIsModalOpen(false)}><XCircle size={20} /></button>
+              <button onClick={() => setIsModalOpen(false)}><X size={20} /></button>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -177,8 +238,8 @@ const Schedule: React.FC = () => {
                     type="date" 
                     required
                     value={date}
-                    disabled // Simplification: Add to currently viewed date
-                    className="w-full p-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
                   />
                 </div>
                 <div>
@@ -194,27 +255,18 @@ const Schedule: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Paciente (Pet)</label>
-                <input 
-                  type="text" 
+                <label className="block text-sm font-medium text-gray-700 mb-1">Paciente (Pet)</label>
+                <select
                   required
-                  placeholder="Ex: Thor"
-                  value={newAppt.petName || ''}
-                  onChange={(e) => setNewAppt({...newAppt, petName: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Tutor</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="Ex: Ana Silva"
-                  value={newAppt.ownerName || ''}
-                  onChange={(e) => setNewAppt({...newAppt, ownerName: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
-                />
+                  value={newAppt.petId}
+                  onChange={(e) => setNewAppt({...newAppt, petId: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                >
+                  <option value="">Selecione um pet</option>
+                  {pets.map(pet => (
+                    <option key={pet.id} value={pet.id}>{pet.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -234,9 +286,10 @@ const Schedule: React.FC = () => {
               <div className="pt-2">
                 <button 
                   type="submit" 
-                  className="w-full bg-teal-600 text-white py-2 rounded-lg font-bold hover:bg-teal-700 transition-colors"
+                  disabled={saving}
+                  className="w-full bg-teal-600 text-white py-2 rounded-lg font-bold hover:bg-teal-700 transition-colors disabled:opacity-70"
                 >
-                  Agendar
+                  {saving ? 'Salvando...' : 'Agendar'}
                 </button>
               </div>
             </form>
