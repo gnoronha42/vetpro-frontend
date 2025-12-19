@@ -43,11 +43,25 @@ const Register: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLogin }
       }, 2000);
     } catch (err: any) {
       console.error('Registration error details:', err);
+      console.error('Error response:', err.response);
+      console.error('Error message:', err.message);
+      
+      let errorMessage = 'Erro ao registrar usuário.';
+      
       if (err.response) {
-        console.error('Response data:', err.response.data);
+        // Erro do backend
+        errorMessage = err.response.data?.error || err.message || 'Erro ao registrar usuário.';
         console.error('Response status:', err.response.status);
+        console.error('Response data:', err.response.data);
+      } else if (err.message) {
+        // Erro de rede ou outro erro
+        errorMessage = err.message;
+      } else if (err.request) {
+        // Requisição feita mas sem resposta
+        errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão.';
       }
-      setError(err.response?.data?.error || 'Erro ao registrar usuário. Verifique se o backend está rodando na porta 3001.');
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

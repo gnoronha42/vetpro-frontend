@@ -38,8 +38,23 @@ export const authService = {
   },
 
   register: async (data: RegisterData): Promise<{ message: string; user: User }> => {
-    const response = await api.post('/auth/register', data);
-    return response.data;
+    try {
+      const response = await api.post('/auth/register', data);
+      // Garantir que o ID seja string
+      if (response.data.user) {
+        response.data.user.id = String(response.data.user.id);
+      }
+      return response.data;
+    } catch (error: any) {
+      console.error('Erro no registro:', error);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      if (error.message) {
+        throw error;
+      }
+      throw new Error('Erro ao registrar usuário. Verifique sua conexão e tente novamente.');
+    }
   },
 
   logout: () => {
