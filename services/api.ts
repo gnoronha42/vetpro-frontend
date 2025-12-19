@@ -30,5 +30,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Interceptor para tratar erros de resposta
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Se receber 401 (não autenticado), limpar dados do localStorage
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Redirecionar para login apenas se não estiver já na página de login
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
 

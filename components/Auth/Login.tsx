@@ -17,7 +17,9 @@ const Login: React.FC<{ onLoginSuccess: () => void; onSwitchToRegister: () => vo
       await authService.login(email, password);
       onLoginSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Credenciais inválidas');
+      console.error('Erro no login:', err);
+      const errorMessage = err.response?.data?.error || err.message || 'Erro ao fazer login. Verifique sua conexão.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

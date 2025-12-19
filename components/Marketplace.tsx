@@ -19,7 +19,13 @@ const Marketplace: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProducts();
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchProducts();
+    } else {
+      setLoading(false);
+      setError('Você precisa estar logado para ver os produtos.');
+    }
   }, []);
 
   const fetchProducts = async () => {
@@ -28,9 +34,12 @@ const Marketplace: React.FC = () => {
       setError(null);
       const data = await productService.getAll();
       setProducts(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao buscar produtos:', err);
-      setError('Não foi possível carregar os produtos. Verifique sua conexão.');
+      // Se for erro 401, não fazer nada (o interceptor já trata)
+      if (err.response?.status !== 401) {
+        setError('Não foi possível carregar os produtos. Verifique sua conexão.');
+      }
     } finally {
       setLoading(false);
     }

@@ -16,12 +16,25 @@ interface RegisterData {
 
 export const authService = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await api.post('/auth/login', { email, password });
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      if (response.data.token && response.data.user) {
+        // Garantir que o ID seja string
+        const user = {
+          ...response.data.user,
+          id: String(response.data.user.id)
+        };
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+      return response.data;
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      if (error.response?.status === 401) {
+        throw new Error('Email ou senha incorretos');
+      }
+      throw error;
     }
-    return response.data;
   },
 
   register: async (data: RegisterData): Promise<{ message: string; user: User }> => {

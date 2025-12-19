@@ -26,7 +26,12 @@ const PatientList: React.FC = () => {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    fetchPets();
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchPets();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const fetchPets = async () => {
@@ -34,8 +39,12 @@ const PatientList: React.FC = () => {
       setLoading(true);
       const data = await petService.getAll();
       setPets(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao buscar pets:', error);
+      // Se for erro 401, não fazer nada (o interceptor já trata)
+      if (error.response?.status !== 401) {
+        // Outros erros podem ser tratados aqui
+      }
     } finally {
       setLoading(false);
     }
